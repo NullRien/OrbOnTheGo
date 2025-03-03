@@ -5,17 +5,49 @@ import random
 import pygame
 import requests
 import threading
+import zipfile
 from PIL import Image, ImageTk
 
-# Initialize pygame mixer
+# URLs for resources
+RESOURCE_URLS = {
+    "orb-blue.png": "https://raw.githubusercontent.com/NullRien/OrbOnTheGo/refs/heads/main/orb-blue.png",
+    "orb-red.png": "https://raw.githubusercontent.com/NullRien/OrbOnTheGo/refs/heads/main/orb-red.png",
+    "sounds.zip": "https://raw.githubusercontent.com/NullRien/OrbOnTheGo/refs/heads/main/sounds.zip",
+    "favicon.png": "https://raw.githubusercontent.com/NullRien/OrbOnTheGo/refs/heads/main/favicon.png"
+}
+
+# Ensure resources are downloaded if they don't exist
+def setup_resources():
+    os.makedirs("resources", exist_ok=True)
+    for filename, url in RESOURCE_URLS.items():
+        filepath = os.path.join("resources", filename)
+        if not os.path.exists(filepath):
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                with open(filepath, "wb") as f:
+                    for chunk in response.iter_content(1024):
+                        f.write(chunk)
+                print(f"Downloaded {filename}")
+    
+    # Extract sounds if not already extracted
+    sounds_folder = "resources/sounds"
+    if not os.path.exists(sounds_folder) and os.path.exists("resources/sounds.zip"):
+        os.makedirs(sounds_folder, exist_ok=True)
+        with zipfile.ZipFile("resources/sounds.zip", 'r') as zip_ref:
+            zip_ref.extractall(sounds_folder)
+        print("Extracted sounds")
+
+setup_resources()
+
 pygame.mixer.init()
 
 # Function to play a random sound from a folder
 def play_random_sound(folder):
-    sound_files = [f for f in os.listdir(folder) if f.endswith(".mp3")]
+    sound_path = os.path.join("resources", "sounds", folder)
+    sound_files = [f for f in os.listdir(sound_path) if f.endswith(".mp3")]
     if sound_files:
-        sound_path = os.path.join(folder, random.choice(sound_files))
-        pygame.mixer.music.load(sound_path)
+        sound_file = os.path.join(sound_path, random.choice(sound_files))
+        pygame.mixer.music.load(sound_file)
         pygame.mixer.music.play()
 
 # Function to update the counter
@@ -61,7 +93,7 @@ def get_initial_count():
 # Function to periodically update counter asynchronously
 def periodic_update():
     get_initial_count()
-    root.after(500, periodic_update)  # Schedule next update in 60 seconds
+    root.after(500, periodic_update)  # Schedule next update in 1/2 a second
 
 # Function to resize and update an image
 def resize_image(image, scale_factor):
@@ -70,18 +102,25 @@ def resize_image(image, scale_factor):
 
 # Create main application window
 root = tk.Tk()
-root.title("Orb on the go")
-root.geometry("400x400")
+root.title("Image Sound Player")
+root.geometry("300x300")  # Smaller window
+root.configure(bg="grey")  # Grey background
+
+# Set application icon
+icon_path = "resources/favicon.png"
+if os.path.exists(icon_path):
+    icon = PhotoImage(file=icon_path)
+    root.iconphoto(False, icon)
 
 # Load images
-original_red_orb = Image.open("orb-red.png").convert("RGBA").resize((100, 100))
-original_blue_orb = Image.open("orb-blue.png").convert("RGBA").resize((100, 100))
+original_red_orb = Image.open("resources/orb-red.png").convert("RGBA").resize((80, 80))
+original_blue_orb = Image.open("resources/orb-blue.png").convert("RGBA").resize((80, 80))
 
 red_photo = ImageTk.PhotoImage(original_red_orb)
 blue_photo = ImageTk.PhotoImage(original_blue_orb)
 
 # Create counter label
-counter_label = tk.Label(root, text="0", font=("Arial", 16))
+counter_label = tk.Label(root, text="0", font=("Arial", 16), bg="grey")
 counter_label.pack()
 
 # Fetch the initial count
@@ -89,12 +128,12 @@ get_initial_count()
 periodic_update()  # Start periodic updates
 
 # Create canvas
-canvas = tk.Canvas(root, width=400, height=400)
+canvas = tk.Canvas(root, width=300, height=300, bg="grey", highlightthickness=0)
 canvas.pack()
 
 # Draw images
-blue_orb_id = canvas.create_image(135, 135, anchor=tk.NW, image=blue_photo)
-red_orb_id = canvas.create_image(185, 185, anchor=tk.NW, image=red_photo)
+blue_orb_id = canvas.create_image(90, 90, anchor=tk.NW, image=blue_photo)
+red_orb_id = canvas.create_image(130, 130, anchor=tk.NW, image=red_photo)
 
 # Resize effect functions
 def on_press(event, orb_id, original_image, sound_folder):
