@@ -1,3 +1,17 @@
+import subprocess
+import sys
+
+def install_requirements():
+    packages = ["tk", "pillow", "pygame", "requests"]
+    for package in packages:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        except subprocess.CalledProcessError:
+            print(f"Failed to install {package}. Please install it manually.")
+
+# autosetup/install
+install_requirements()
+
 import tkinter as tk
 from tkinter import PhotoImage
 import os
